@@ -19,13 +19,13 @@ if __name__ =="__main__":
 
     # ---------------- Paramètres et hyperparamètres ----------------#
     force_cpu = True            # Forcer l'utilisation du CPU (si un GPU est disponible)
-    training = True             # Faire l'entrainement sur l'ensemble de donnees
+    training = False             # Faire l'entrainement sur l'ensemble de donnees
     learning_curves = True      # Visualiser les courbes d'apprentissage pendant l'entrainement
     test_tagging = False         # Visualiser l'annotation sur des echantillons de validation
-    test_generation = False     # Visualiser la generation sur des echantillons de validation
+    test_generation = True     # Visualiser la generation sur des echantillons de validation
 
     batch_size = 10             # Taille des lots
-    n_epochs = 50               # Nombre d'iteration sur l'ensemble de donnees
+    n_epochs = 20               # Nombre d'iteration sur l'ensemble de donnees
     lr = 0.01                   # Taux d'apprentissage pour l'optimizateur
 
     n_hidden = 25               # Nombre de neurones caches par couche 
@@ -62,7 +62,7 @@ if __name__ =="__main__":
     print('\n')
 
     # Instanciation du model
-    model = Model(n_hidden,  n_layers=n_layers)
+    model = Model(n_hidden, n_layers=n_layers)
     model = model.to(device)
 
     # Afficher le résumé du model
@@ -89,10 +89,16 @@ if __name__ =="__main__":
             model.train()
             for batch_idx, data in enumerate(dataload_train):
                 in_seq, target_seq = [obj.to(device).float() for obj in data]
-
                 # ---------------------- Laboratoire 1 - Question 3 - Début de la section à compléter ------------------
+                in_seq = in_seq.view(dataload_train.batch_size, -1, 1)
+                target_seq = target_seq.view(dataload_train.batch_size, -1, 1)
 
-                
+                optimizer.zero_grad()
+                outputs, _ = model.forward(in_seq)
+                criterion_loss = criterion(outputs, target_seq)
+                criterion_loss.backward(retain_graph=True)
+                optimizer.step()
+                running_loss_train += criterion_loss.item()
                 # ---------------------- Laboratoire 1 - Question 3 - Fin de la section à compléter ------------------
             
                 # Affichage pendant l'entraînement
@@ -106,10 +112,13 @@ if __name__ =="__main__":
             model.eval()
             for data in dataload_val:
                 in_seq, target_seq = [obj.to(device).float() for obj in data]
-
                 # ---------------------- Laboratoire 1 - Question 3 - Début de la section à compléter ------------------
+                in_seq = in_seq.view(dataload_train.batch_size, -1, 1)
+                target_seq = target_seq.view(dataload_train.batch_size, -1, 1)
                 
-
+                outputs, _ = model.forward(in_seq)
+                criterion_loss = criterion(outputs, target_seq)
+                running_loss_val += criterion_loss.item()
                 # ---------------------- Laboratoire 1 - Question 3 - Fin de la section à compléter ------------------
 
             print('\nValidation - Average loss: {:.4f}'.format(running_loss_val/len(dataload_val)))
@@ -129,7 +138,7 @@ if __name__ =="__main__":
             # Enregistrer les poids
             if running_loss_val < best_val_loss:
                 best_val_loss = running_loss_val
-                torch.save(model,'model.pt')
+                torch.save(model,'laboratoire1/model.pt')
 
         # Terminer l'affichage d'entraînement
         if learning_curves:
@@ -139,7 +148,7 @@ if __name__ =="__main__":
 
     if test_tagging:
         # Évaluation étiquettage
-        model = torch.load('model.pt', map_location=lambda storage, loc: storage)
+        model = torch.load('laboratoire1/model.pt', map_location=lambda storage, loc: storage, weights_only=False)
         model = model.to(device)
         model.eval()
         for num in range(10):
@@ -149,11 +158,10 @@ if __name__ =="__main__":
             # Initialisation de la prédiction de sortie
             prediction_sequence = np.zeros(len(input_sequence))
 
-
             # ---------------------- Laboratoire 1 - Question 4 - Début de la section à compléter ------------------
-            
-            
-
+            input_sequence = input_sequence.view(-1, 1)
+            prediction_sequence, _ = model.forward(input_sequence.float())
+            prediction_sequence = prediction_sequence.detach().numpy()
             # ---------------------- Laboratoire 1 - Question 4 - Fin de la section à compléter ------------------
 
             plt.title("Tagged data")
@@ -164,7 +172,7 @@ if __name__ =="__main__":
 
     if test_generation:
         # Évaluation génération
-        model = torch.load('model.pt', map_location=lambda storage, loc: storage)
+        model = torch.load('laboratoire1/model.pt', map_location=lambda storage, loc: storage, weights_only=False)
         model = model.to(device)
         model.eval()
         for num in range(10):
@@ -178,11 +186,14 @@ if __name__ =="__main__":
             # Initialisation de la prédiction de sortie
             prediction_sequence = np.zeros(nb_predictions_to_generate)
 
-
             # ---------------------- Laboratoire 1 - Question 5 - Début de la section à compléter ------------------
-        
-
-
+            usable_input_sequence = input_sequence[:usable_input_sequence_len].view(-1, 1)
+            _, h = model.forward(usable_input_sequence.float())
+            
+            sample_input = input_sequence[usable_input_sequence_len-1]
+            for i in range(nb_predictions_to_generate):
+                sample_input, h = model.forward(sample_input.view(-1, 1).float(), hx=h)
+                prediction_sequence[i] = sample_input[0].item()
             # ---------------------- Laboratoire 1 - Question 5 - Fin de la section à compléter ------------------
 
 

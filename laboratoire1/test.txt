@@ -1,0 +1,10 @@
+prediction_sequence = np.zeros(nb_predictions_to_generate)
+
+            # ---------------------- Laboratoire 1 - Question 5 - Début de la section à compléter ------------------
+            input_sequence = input_sequence[0:usable_input_sequence_len]
+            output, h = model.forward(input_sequence[None, :, None].float())
+            
+            for i in range(nb_predictions_to_generate):
+                next_input = output[:, -1, :]
+                output, h = model.forward(next_input.unsqueeze(1).float(), hx=h)
+                prediction_sequence[i] = output[0, 0, 0].item()

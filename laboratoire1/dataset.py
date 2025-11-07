@@ -8,7 +8,7 @@ import pickle
 
 class SignauxDataset(Dataset):
     """Ensemble de signaux continus à differentes fréquences"""
-    def __init__(self, filename='data.p'):
+    def __init__(self, filename='laboratoire1/data.p'):
         with open(filename, 'rb') as fp:
             self.data = pickle.load(fp)
 
@@ -16,7 +16,7 @@ class SignauxDataset(Dataset):
 
         # ------------------------ Laboratoire 1 - Question 1 - Début de la section à compléter ----------------------------
         
-        return 0
+        return len(self.data)
 
         # ---------------------- Laboratoire 1 - Question 1 - Fin de la section à compléter --------------------------------
 
@@ -24,7 +24,7 @@ class SignauxDataset(Dataset):
 
         # ------------------------ Laboratoire 1 - Question 1 - Début de la section à compléter ----------------------------
         
-        return 0
+        return (torch.from_numpy(self.data[idx][0]), torch.from_numpy(self.data[idx][1]))
 
         # ---------------------- Laboratoire 1 - Question 1 - Fin de la section à compléter --------------------------------
     
