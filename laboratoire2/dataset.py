@@ -72,9 +72,29 @@ class Fr_En(Dataset):
         
 
         # ---------------------- Laboratoire 2 - Question 2 - Début de la section à compléter ------------------
-        self.max_len['fr'] = 0
-        self.max_len['en'] = 0
-
+        self.max_len['fr'] = max(len(data['fr'][i]) for i in range(len(data['fr'])))+1
+        self.max_len['en'] = max(len(data['en'][i]) for i in range(len(data['en'])))+1
+        
+        for i in range(len(data['fr'])):
+            phrase = data['fr'][i]
+            length = len(phrase)
+        
+            for j in range(length, self.max_len['fr']):
+                if j == length:
+                    phrase.append(self.stop_symbol)
+                else:
+                    phrase.append(self.pad_symbol)
+                    
+        
+        for i in range(len(data['en'])):
+            phrase = data['en'][i]
+            length = len(phrase)
+        
+            for j in range(length, self.max_len['en']):
+                if j == length:
+                    phrase.append(self.stop_symbol)
+                else:
+                    phrase.append(self.pad_symbol)
 
         # ---------------------- Laboratoire 2 - Question 2 - Fin de la section à compléter ------------------
 

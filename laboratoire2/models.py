@@ -35,8 +35,8 @@ class Seq2seq(nn.Module):
 
         # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------
 
-        out = None
-        hidden = None
+        embedded = self.fr_embedding(x)
+        out, hidden = self.encoder_layer(embedded)
         
         # ---------------------- Laboratoire 2 - Question 3 - Fin de la section à compléter -----------------
 
@@ -54,8 +54,16 @@ class Seq2seq(nn.Module):
         for i in range(max_len):
 
             # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------   
-            
-            vec_out = vec_out
+            vec_in = self.en_embedding(vec_in)
+            dec_out, hidden = self.decoder_layer(vec_in, hidden)
+            # 3️⃣ Projection dans l'espace du vocabulaire
+            logits = self.fc(dec_out)  # [batch, 1, vocab_size]
+
+            # 4️⃣ Stockage de la prédiction
+            vec_out[:, i, :] = logits.squeeze(1)  # correspond à la position i de la séquence
+
+            # 5️⃣ Prédiction du prochain mot (greedy decoding)
+            vec_in = logits.argmax(2)  # renvoie l'indice du mot le plus probable
 
             # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------
 
@@ -100,8 +108,8 @@ class Seq2seq_attn(nn.Module):
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
         
-        out = None
-        hidden = None
+        embedded = self.fr_embedding(x)
+        out, hidden = self.encoder_layer(embedded)
         
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
 
@@ -116,10 +124,12 @@ class Seq2seq_attn(nn.Module):
         # Attention
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
-        
+
+        w = query @ values.transpose(-2, -1) # [batch, seq_len, hidden_dim], values.transpose(-2, -1) → [batch, hidden_dim, seq_len]
+
+        attention_weights = nn.functional.softmax(w, dim=-1)  # [B, L_fr, 1]
        
-        attention_weights = None
-        attention_output = None
+        attention_output = w @ values
         
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
@@ -140,8 +150,20 @@ class Seq2seq_attn(nn.Module):
         for i in range(max_len):
 
             # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
+            vec_in = self.en_embedding(vec_in)
+            dec_out, hidden = self.decoder_layer(vec_in, hidden)
             
-            vec_out = vec_out
+            a_a, a_w = self.attentionModule(dec_out, encoder_outs)
+            # 3️⃣ Projection dans l'espace du vocabulaire
+            concat_result = torch.cat((a_a, dec_out), dim=2)
+            combined = self.att_combine(concat_result)
+            logits = self.fc(combined)  # [batch, 1, vocab_size]
+
+            # 4️⃣ Stockage de la prédiction
+            vec_out[:, i, :] = logits.squeeze(1)  # correspond à la position i de la séquence
+
+            # 5️⃣ Prédiction du prochain mot (greedy decoding)
+            vec_in = logits.argmax(2)  # renvoie l'indice du mot le plus probable
 
             # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
 
