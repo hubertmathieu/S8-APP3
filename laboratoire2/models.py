@@ -154,6 +154,8 @@ class Seq2seq_attn(nn.Module):
             dec_out, hidden = self.decoder_layer(vec_in, hidden)
             
             a_a, a_w = self.attentionModule(dec_out, encoder_outs)
+            attention_weights[:, :, i] = a_w.squeeze(1)
+
             # 3️⃣ Projection dans l'espace du vocabulaire
             concat_result = torch.cat((a_a, dec_out), dim=2)
             combined = self.att_combine(concat_result)

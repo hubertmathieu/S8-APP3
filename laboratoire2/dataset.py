@@ -124,6 +124,6 @@ class Fr_En(Dataset):
 
 if __name__ == "__main__":
     print("\nExample de données de la base de données : \n")
-    a = Fr_En('fra.txt')
+    a = Fr_En('laboratoire2/fra.txt')
     a.visualize(np.random.randint(0,len(a)))
     print('\n')

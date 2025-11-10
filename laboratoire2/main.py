@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     # ---------------- Paramètres et hyperparamètres ----------------#
     force_cpu = 1               # Forcer l'utilisation du CPU (si un GPU est disponible)
-    training = 1                # Faire l'entrainement sur l'ensemble de donnees
+    training = 0                # Faire l'entrainement sur l'ensemble de donnees
     display_attention = 0       # Affichage des poids d'attention
     learning_curves = 1         # Visualiser les courbes d'apprentissage pendant l'entrainement
     test = 1                    # Visualiser la generation sur des echantillons de validation
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() and not force_cpu else "cpu")
 
     # Instanciation de l'ensemble de données
-    dataset = Fr_En(n_samp=4000, samplelen=[6,10])
+    dataset = Fr_En(filename='laboratoire2/fra.txt', n_samp=4000, samplelen=[6,10])
 
     # Instanciation du dataloader
     dataload_train = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=n_workers)
@@ -124,7 +124,7 @@ if __name__ == '__main__':
                 plt.pause(0.01)
 
             # Enregistrer les poids
-            torch.save(model,'model.pt')
+            torch.save(model,'laboratoire2/model.pt')
 
             # Terminer l'affichage d'entraînement
         if learning_curves:
@@ -135,7 +135,7 @@ if __name__ == '__main__':
         # Évaluation
         
         # Chargement des poids
-        model = torch.load('model.pt')
+        model = torch.load('laboratoire2/model.pt')
         dataset.symb2int = model.symb2int
         dataset.int2symb = model.int2symb
 
