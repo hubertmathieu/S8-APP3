@@ -2,6 +2,7 @@
 # Auteur: Jean-Samuel Lauzon et  Jonathan Vincent
 # Hivers 2021
 
+import time
 import torch
 from torch import nn
 import numpy as np
@@ -17,7 +18,7 @@ if __name__ == '__main__':
 
     # ---------------- Paramètres et hyperparamètres ----------------#
     force_cpu = False           # Forcer a utiliser le cpu?
-    trainning = True           # Entrainement?
+    trainning = False           # Entrainement?
     test = True                # Test?
     learning_curves = True     # Affichage des courbes d'entrainement?
     display_attention = True
@@ -26,7 +27,7 @@ if __name__ == '__main__':
     n_workers = 0           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
     batch_size = 32
     train_val_split = .7        # Ratio des echantillions pour l'entrainement
-    n_hidden = 15               # Nombre de neurones caches par couche 
+    n_hidden = 20               # Nombre de neurones caches par couche 
     n_layers = 2               # Nombre de de couches
 
     # À compléter
@@ -64,17 +65,16 @@ if __name__ == '__main__':
 
     # Instanciation du model
     # À compléter
-    model = trajectory2seq_attn(hidden_dim=n_hidden, \
-        n_layers=n_layers, device=device, symb2int=dataset.symb2int, \
-        int2symb=dataset.int2symb, dict_size=dataset.dict_size, maxlen=dataset.max_len, is_bidirectional=True)
-
-
-    # Afficher le résumé du model
-    print('Model : \n', model, '\n')
-    print('Nombre de poids: ', sum([i.numel() for i in model.parameters() ]))
 
     best_val_loss = np.inf # pour sauvegarder le meilleur model
     if trainning:
+        model = trajectory2seq(hidden_dim=n_hidden, \
+        n_layers=n_layers, device=device, symb2int=dataset.symb2int, \
+        int2symb=dataset.int2symb, dict_size=dataset.dict_size, maxlen=dataset.max_len, is_bidirectional=False)
+
+        # Afficher le résumé du model
+        print('Model : \n', model, '\n')
+        print('Nombre de poids: ', sum([i.numel() for i in model.parameters()]))
 
         # Fonction de coût et optimizateur
         # À compléter
@@ -197,6 +197,10 @@ if __name__ == '__main__':
         model = model.to(device).float()
         model.eval()
 
+        # Afficher le résumé du model
+        print('Model : \n', model, '\n')
+        print('Nombre de poids: ', sum([i.numel() for i in model.parameters()]))
+
         # Charger les données de tests
         # À compléter
         dataset_test = HandwrittenWords('problematique/data_test.p', max_len=model.maxlen)
@@ -206,7 +210,8 @@ if __name__ == '__main__':
         conf_mat = np.zeros((n_classes, n_classes), dtype=int)
 
         total_edit_dist = 0
-        
+        total_inference_time = 0
+
         # Boucle de test
         with torch.no_grad():
             for data in dataload_test:
@@ -214,12 +219,16 @@ if __name__ == '__main__':
                 input_seq = input_seq.to(device).float()
                 target_seq = target_seq.to(device).long()
 
+                start_time = time.time()
                 output, hidden, attn = model(input_seq)
+                end_time = time.time()
+                total_inference_time += end_time - start_time
+
                 preds = torch.argmax(output, dim=-1).cpu().numpy()
                 targets = target_seq.cpu().numpy()
 
                 # Mise à jour de la matrice de confusion (lettre par lettre)
-                conf_mat = confusion_matrix(targets, preds, conf_mat, ignore=[dataset_test.symb2int[dataset_test.pad_symbol]])
+                conf_mat = confusion_matrix(targets, preds, conf_mat, ignore=[dataset_test.symb2int[dataset_test.pad_symbol], dataset_test.symb2int[dataset_test.start_symbol], dataset_test.symb2int[dataset_test.stop_symbol]])
 
                 # Calcul de la distance d'édition moyenne
                 M = len(preds)
@@ -231,7 +240,10 @@ if __name__ == '__main__':
                     total_edit_dist += edit_distance(a[:Ma],b[:Mb])/batch_size
 
         avg_edit_dist = total_edit_dist / len(dataload_test)
-        print(f"\nDistance d'édition moyenne sur le test : {avg_edit_dist:.3f}")
+        print(f"Distance d'édition moyenne sur le test : {avg_edit_dist:.3f}")
+
+        avg_inference_time = total_inference_time / len(dataload_test)
+        print(f"Temps d'inférence moyenne sur le test : {avg_inference_time:.3f}")
 
         # Normaliser la matrice de confusion pour affichage
         conf_mat_norm = conf_mat / (conf_mat.sum(axis=1, keepdims=True) + 1e-8)
@@ -251,20 +263,18 @@ if __name__ == '__main__':
             target = [model.int2symb[i] for i in target_seq.detach().cpu().tolist()]
             # Affichage de l'attention
             # À compléter (si nécessaire)
-            
 
             # Affichage des résultats de test
             # À compléter
-            print('Target: ', ' '.join(target))
+            print('\nTarget: ', ' '.join(target))
             print('Output: ', ' '.join(out_seq))
-            print('')
             
             # Affichage de la matrice de confusion
             # À compléter
             
         import matplotlib.pyplot as plt
 
-        labels = [model.int2symb[i] for i in range(len(model.int2symb))]
+        labels = [model.int2symb[i] for i in range(1, 27)]
         fig, ax = plt.subplots(figsize=(10, 8))
         cax = ax.matshow(conf_mat_norm, cmap="Blues")
         plt.title("Matrice de confusion normalisée (Test)", pad=20)

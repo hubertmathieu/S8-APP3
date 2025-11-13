@@ -41,9 +41,20 @@ class trajectory2seq(nn.Module):
         out, hidden = self.encoder_layer(x)
         
         if self.is_bidirectional:
-            hidden = hidden.view(self.n_layers, 2, -1, self.hidden_dim)
-            hidden = torch.cat((hidden[:, 0, :, :], hidden[:, 1, :, :]), dim=2)
-            hidden = self.bidirectional_merge(hidden)
+            def merge_dir(tensor):
+                tensor = tensor.view(self.n_layers, 2, -1, self.hidden_dim)
+                tensor = torch.cat((tensor[:, 0, :, :], tensor[:, 1, :, :]), dim=2)
+                return self.bidirectional_merge(tensor)
+            
+            if isinstance(hidden, tuple):
+                # LSTM: hidden = (h, c)
+                h, c = hidden
+                h = merge_dir(h)
+                c = merge_dir(c)
+                hidden = (h, c)
+            else:
+                # RNN / GRU
+                hidden = merge_dir(hidden)
         
         return out, hidden
 
@@ -51,7 +62,7 @@ class trajectory2seq(nn.Module):
     def decoder(self, encoder_outs, hidden):
         # Initialisation des variables
         max_len = self.maxlen['target'] # Longueur max de la séquence anglaise (avec padding)
-        batch_size = hidden.shape[1] # Taille de la batch
+        batch_size = encoder_outs.shape[0] # Taille de la batch
         vec_in = torch.zeros((batch_size, 1)).to(self.device).long() # Vecteur d'entrée pour décodage 
         vec_out = torch.zeros((batch_size, max_len, self.dict_size['target'])).to(self.device) # Vecteur de sortie du décodage
 
@@ -97,7 +108,6 @@ class trajectory2seq_attn(nn.Module):
 
         # Définition de la couche dense pour l'attention
         self.att_combine = nn.Linear(2*hidden_dim, hidden_dim)
-        self.hidden2query = nn.Linear(hidden_dim, hidden_dim)
 
         if self.is_bidirectional:
             self.bidirectional_merge = nn.Linear(self.hidden_dim*2, self.hidden_dim)
@@ -109,11 +119,7 @@ class trajectory2seq_attn(nn.Module):
         self.to(device)
     
     def attentionModule(self, query, values):
-        # Module d'attention
-
-        # Couche dense à l'entrée du module d'attention
-        query = self.hidden2query(query)
-        
+        # Module d'attention        
         if self.is_bidirectional:
             values = self.values_projection(values)  # [batch, enc_seq, hidden_dim]
 
@@ -129,9 +135,20 @@ class trajectory2seq_attn(nn.Module):
         out, hidden = self.encoder_layer(x)
 
         if self.is_bidirectional:
-            hidden = hidden.view(self.n_layers, 2, -1, self.hidden_dim)
-            hidden = torch.cat((hidden[:, 0, :, :], hidden[:, 1, :, :]), dim=2)
-            hidden = self.bidirectional_merge(hidden)
+            def merge_dir(tensor):
+                tensor = tensor.view(self.n_layers, 2, -1, self.hidden_dim)
+                tensor = torch.cat((tensor[:, 0, :, :], tensor[:, 1, :, :]), dim=2)
+                return self.bidirectional_merge(tensor)
+            
+            if isinstance(hidden, tuple):
+                # LSTM: hidden = (h, c)
+                h, c = hidden
+                h = merge_dir(h)
+                c = merge_dir(c)
+                hidden = (h, c)
+            else:
+                # RNN / GRU
+                hidden = merge_dir(hidden)
             
         return out, hidden
 
@@ -139,7 +156,7 @@ class trajectory2seq_attn(nn.Module):
     def decoder(self, encoder_outs, hidden):
         # Initialisation des variables
         max_len = self.maxlen['target'] # Longueur max de la séquence anglaise (avec padding)
-        batch_size = hidden.shape[1] # Taille de la batch
+        batch_size = encoder_outs.shape[0] # Taille de la batch
         vec_in = torch.zeros((batch_size, 1)).to(self.device).long() # Vecteur d'entrée pour décodage 
         vec_out = torch.zeros((batch_size, max_len, self.dict_size['target'])).to(self.device) # Vecteur de sortie du décodage
         attention_weights = torch.zeros((batch_size, self.maxlen['input'][1], self.maxlen['target'])).to(self.device) # Poids d'attention
